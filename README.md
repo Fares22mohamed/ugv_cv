@@ -145,3 +145,4 @@ observations and keep the settings with your test notes.
 - Espressif [Arduino ESP32 camera pin map](https://github.com/espressif/arduino-esp32/blob/master/libraries/ESP32/examples/Camera/CameraWebServer/camera_pins.h)
 - Espressif [ESP32 camera driver](https://github.com/espressif/esp32-camera/blob/master/README.md)
 - Espressif [Arduino ESP32 UART guide](https://docs.espressif.com/projects/arduino-esp32/en/latest/api/serial.html)
+"# ugv_cv" 
