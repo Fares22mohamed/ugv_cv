@@ -6,15 +6,15 @@
 
 namespace vision {
 
-enum Color { RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE };
+enum Color { RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, PURPLE };
 
 inline const char* colorName(Color color) {
-  static const char* names[] = {"RED", "ORANGE", "YELLOW", "GREEN", "BLUE", "PURPLE"};
+  static const char* names[] = {"RED", "ORANGE", "YELLOW", "GREEN", "CYAN", "BLUE", "PURPLE"};
   return names[static_cast<int>(color)];
 }
 
 inline bool parseColor(const char* text, Color& color) {
-  for (int i = 0; i < 6; ++i) {
+  for (int i = 0; i < 7; ++i) {
     if (strcmp(text, colorName(static_cast<Color>(i))) == 0) {
       color = static_cast<Color>(i);
       return true;
@@ -42,6 +42,7 @@ inline bool matches(uint8_t red, uint8_t green, uint8_t blue, Color color) {
     case ORANGE: return hue >= 16 && hue <= 44;
     case YELLOW: return hue >= 45 && hue <= 70;
     case GREEN: return hue >= 71 && hue <= 165;
+    case CYAN: return hue >= 166 && hue <= 184;
     case BLUE: return hue >= 185 && hue <= 260;
     case PURPLE: return hue >= 261 && hue <= 344;
   }
