@@ -30,7 +30,7 @@ python -m unittest prototype.test_uart_protocol -v
 On this computer, the Codex bundled Python already has Pillow. If `python` opens the Microsoft Store instead of running, use this PowerShell command to create the demo images:
 
 ```powershell
-$py = "$env:USERPROFILE\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe"
+$py = "$env:USERPROFILE\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
 & $py prototype/vision.py --demo
 ```
 
@@ -81,7 +81,7 @@ FLAG,42,160,1.0,RED
 NONE
 ```
 
-For `FLAG`, the fields are message type, horizontal center pixel (0–159), image width (160), binary acceptance marker (`1.0`, not a probability), and detected color. `NONE` means that the camera did not accept a target in that frame. The main controller sends `C,AUTO\\n` to choose automatic color detection or `C,RED\\n` to lock one color. The bridge validates incoming messages and the selected color; no flag, stale data, a missing ultrasonic echo, or a measured distance at/below 50 cm commands `STOP`.
+For `FLAG`, the fields are message type, horizontal center pixel (0–159), image width (160), binary acceptance marker (`1.0`, not a probability), and detected color. `NONE` means that the camera did not accept a target in that frame. The main controller sends a newline-terminated `C,AUTO` command to choose automatic color detection or `C,RED` to lock one color. The bridge validates incoming messages and the selected color; no flag, stale data, a missing ultrasonic echo, or a measured distance at/below 50 cm commands `STOP`.
 
 ## First acceptance checks
 
