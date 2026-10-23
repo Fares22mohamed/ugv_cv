@@ -1,8 +1,8 @@
-# ESP32-CAM UART protocol integration
+# ESP32-CAM UART and live-stream integration
 
-## Camera firmware contract
+## Camera UART contract
 
-The ESP32-CAM sends one newline-terminated message per processed frame over UART1 at **115200 baud, 8N1**:
+The ESP32-CAM sends a newline-terminated message for each processed frame over UART1 at **115200 baud, 8N1**:
 
 - Valid target: `FLAG,centerX,160,1.0,COLOR\n`
 - No target, invalid frame, or failed frame capture: `NONE\n`
@@ -16,47 +16,35 @@ FLAG,120,160,1.0,RED
 NONE
 ```
 
-`centerX` is clamped to 0–159. The preserved detector's negative horizontal error means left, approximately zero means center, and positive means right. Firmware conversion is `round(80.0 + errorPct * 0.8)`.
+`centerX` is clamped to 0–159. The camera estimates it with `round(80 + errorPct * 0.8)`; a flag on the left yields a smaller value than a flag on the right. The `1.0` field is a binary accepted/not-accepted marker, **not** a calibrated confidence probability.
 
-The detector does **not** produce a calibrated confidence probability. The required `1.0` field is a binary acceptance marker used only when the existing detector reports `valid == true`.
+The camera starts in **AUTO** mode, detecting the largest connected region in any supported preset color. The main controller can send `C,AUTO\n` to keep AUTO enabled or `C,COLOR\n` to lock the camera to one color. Supported colors are RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, and PURPLE.
 
-## Target color
+The main ESP32 bridge accepts this `FLAG` protocol, checks the selected color unless AUTO is active, and maps `centerX` back to its left/right steering error. `NONE` immediately invalidates the target. Missing, invalid, or stale vision data keeps the starter motion decision at STOP.
 
-The default is RED. In `esp32_cam_vision.ino`, change:
+## Live video setup
 
-```cpp
-#define TARGET_COLOR vision::RED
-```
+The camera serves a browser page and a multipart JPEG stream:
 
-to one of:
+- Main page: `http://CAMERA_IP/` (TCP port 80)
+- Live stream: `http://CAMERA_IP:81/stream`
+- Single photo: `http://CAMERA_IP/capture`
 
-- `vision::ORANGE`
-- `vision::YELLOW`
-- `vision::GREEN`
-- `vision::BLUE`
-- `vision::PURPLE`
+Before uploading, edit `WIFI_SSID` and `WIFI_PASSWORD` in `esp32_cam_vision.ino` to use a **2.4 GHz** Wi-Fi network. If connection fails, the camera starts the `ESP32-CAM` setup hotspot using the configured `AP_PASSWORD`; the default in this development sketch is `12345678`. Change that password before using the hotspot outside a controlled test.
 
-Then compile and upload the camera sketch. The camera tracks the one configured target color; it does not automatically classify arbitrary colors. The optional `C,COLOR\n` UART command remains supported, but startup does not depend on receiving one.
+Open the Serial Monitor at **115200 baud** and copy the IP printed after startup. Connect the laptop to the same Wi-Fi network and browse to that IP. If the fallback hotspot is active, connect the laptop to `ESP32-CAM` and browse to `http://192.168.4.1/`. Depending on the laptop and network, joining the hotspot may temporarily disconnect it from the internet.
+
+The HTTP stream is for trusted local testing. It has no authentication or TLS; do not port-forward it or expose it directly to the public internet.
 
 ## Wiring
 
 | Signal | ESP32-CAM (AI Thinker assumed) | Main Control ESP32 |
 |---|---|---|
 | Camera UART TX | GPIO14 | GPIO16 (RX) |
-| Camera UART RX (optional color command) | GPIO13 | GPIO17 (TX) |
+| Camera UART RX | GPIO13 | GPIO17 (TX) |
 | Ground | GND | GND |
 
-Cross TX to RX. Never connect TX to TX. Both boards require suitable power and a common ground. GPIO13/14 share the camera board's microSD interface; do not use microSD while they are assigned to UART. Verify the actual board pinout before wiring.
-
-## Important integration blocker: Control parser mismatch
-
-The current `esp32_main_bridge/esp32_main_bridge.ino` on `main` parses the old format:
-
-```text
-V1,sequence,color,valid,errorPct,areaPermille
-```
-
-It does **not** parse `FLAG,centerX,160,1.0,COLOR`. Per the scoped request, this change intentionally does not modify the Control sketch. Therefore, this branch updates the camera transmitter but is **not end-to-end compatible with the currently committed Control receiver** until the Control team updates its parser or explicitly approves another protocol. Do not claim integrated operation or connect this protocol to motion control until that mismatch is resolved and tested.
+Cross TX to RX, not TX to TX. Both boards require suitable power and a common ground. GPIO13/14 share the camera board's microSD interface; do not use microSD while those pins are assigned to UART. Confirm the physical board pinout and wiring before power-up.
 
 ## Host-side contract tests
 
@@ -66,4 +54,4 @@ From the repository root, run:
 python -m unittest prototype.test_uart_protocol -v
 ```
 
-These tests validate the specified protocol shape, coordinate conversion, color names, newline handling, and rejection of the old V1 format. They do not compile the Arduino sketch, test real UART timing, validate camera pixel byte order, or replace physical-board testing.
+These tests validate the documented message shape, coordinate conversion, accepted color names, newline handling, and rejection of the previous V1 format. They do not compile the Arduino sketches, verify real UART timing, validate camera pixel byte order, or replace physical-board tests.
