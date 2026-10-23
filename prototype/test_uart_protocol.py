@@ -2,12 +2,18 @@ import unittest
 
 
 IMAGE_WIDTH = 160
+SUPPORTED_COLORS = {"RED", "ORANGE", "YELLOW", "GREEN", "CYAN", "BLUE", "PURPLE"}
 
 
 def center_x_from_error(error_pct: int) -> int:
     """Mirror the camera firmware's required error-to-pixel conversion."""
     value = round(80.0 + error_pct * 0.8)
     return max(0, min(IMAGE_WIDTH - 1, value))
+
+
+def error_from_center_x(center_x: int) -> int:
+    """Mirror the main bridge's approximate inverse coordinate conversion."""
+    return max(-100, min(100, round((center_x - 80) * 1.25)))
 
 
 def parse_protocol_line(line: str):
@@ -29,7 +35,7 @@ def parse_protocol_line(line: str):
         raise ValueError("image width must be 160")
     if confidence != "1.0":
         raise ValueError("confidence field must be the binary acceptance marker 1.0")
-    if color not in {"RED", "ORANGE", "YELLOW", "GREEN", "BLUE", "PURPLE"}:
+    if color not in SUPPORTED_COLORS:
         raise ValueError("unsupported color")
     return {
         "valid": True,
@@ -46,6 +52,11 @@ class CameraUartProtocolTests(unittest.TestCase):
         self.assertEqual(center_x_from_error(0), 80)
         self.assertGreater(center_x_from_error(50), 80)
 
+    def test_bridge_inverse_mapping(self):
+        self.assertEqual(error_from_center_x(40), -50)
+        self.assertEqual(error_from_center_x(80), 0)
+        self.assertEqual(error_from_center_x(120), 50)
+
     def test_center_clamps_to_image_bounds(self):
         self.assertEqual(center_x_from_error(-100), 0)
         self.assertEqual(center_x_from_error(100), 159)
@@ -61,7 +72,7 @@ class CameraUartProtocolTests(unittest.TestCase):
         self.assertFalse(parse_protocol_line("NONE\r\n")["valid"])
 
     def test_all_supported_uppercase_colors(self):
-        for color in ("RED", "ORANGE", "YELLOW", "GREEN", "BLUE", "PURPLE"):
+        for color in sorted(SUPPORTED_COLORS):
             with self.subTest(color=color):
                 self.assertEqual(
                     parse_protocol_line(f"FLAG,80,160,1.0,{color}\n")["color"],
